@@ -15,7 +15,7 @@ impl Plugin for VelocityPlugin {
     }
 }
 
-fn update_position(time: Res<Time>, mut velocity_query: Query<(&mut Transform, &Velocity)>) {
+pub fn update_position(time: Res<Time>, mut velocity_query: Query<(&mut Transform, &Velocity)>) {
     for (mut transform, velocity) in &mut velocity_query {
         transform.translation += velocity.0.extend(0.) * time.delta_seconds();
     }
