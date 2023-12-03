@@ -4,11 +4,13 @@ mod actions;
 mod loading;
 mod menu;
 mod player;
+mod rain;
 
 use crate::actions::ActionsPlugin;
 use crate::loading::LoadingPlugin;
 use crate::menu::MenuPlugin;
 use crate::player::PlayerPlugin;
+use crate::rain::RainPlugin;
 
 use bevy::app::App;
 #[cfg(debug_assertions)]
@@ -38,6 +40,7 @@ impl Plugin for GamePlugin {
             MenuPlugin,
             ActionsPlugin,
             PlayerPlugin,
+            RainPlugin,
         ));
 
         #[cfg(debug_assertions)]

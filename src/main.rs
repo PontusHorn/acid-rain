@@ -27,7 +27,7 @@ fn main() {
             ..default()
         }))
         .add_plugins(GamePlugin)
-        .add_systems(Startup, set_window_icon)
+        // .add_systems(Startup, set_window_icon)
         .run();
 }
 
