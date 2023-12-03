@@ -1,4 +1,4 @@
-use crate::GameState;
+use crate::{velocity::Velocity, GameState};
 use bevy::{prelude::*, sprite::Anchor};
 use rand::prelude::*;
 
@@ -11,13 +11,14 @@ impl Plugin for RainPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (spawn_rain, move_rain, despawn_rain).run_if(in_state(GameState::Playing)),
+            (spawn_rain, despawn_rain).run_if(in_state(GameState::Playing)),
         );
     }
 }
 
 const DENSITY: i8 = 3;
 const HEIGHT: f32 = 16.;
+const VELOCITY: Vec2 = Vec2::new(50., -800.);
 
 fn spawn_rain(mut commands: Commands, camera_query: Query<&OrthographicProjection>) {
     let mut rng = thread_rng();
@@ -40,16 +41,8 @@ fn spawn_rain(mut commands: Commands, camera_query: Query<&OrthographicProjectio
                 .with_rotation(Quat::from_rotation_z(0.2)),
                 ..default()
             })
+            .insert(Velocity(VELOCITY))
             .insert(Rain);
-    }
-}
-
-const RAIN_VELOCITY: Vec3 = Vec3::new(50., -800., 0.);
-
-fn move_rain(time: Res<Time>, mut rain_query: Query<&mut Transform, With<Rain>>) {
-    let movement = RAIN_VELOCITY * time.delta_seconds();
-    for mut rain_transform in &mut rain_query {
-        rain_transform.translation += movement;
     }
 }
 
