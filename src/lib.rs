@@ -1,6 +1,7 @@
 #![allow(clippy::type_complexity)]
 
 mod actions;
+mod level;
 mod loading;
 mod menu;
 mod player;
@@ -8,6 +9,7 @@ mod rain;
 mod velocity;
 
 use crate::actions::ActionsPlugin;
+use crate::level::LevelPlugin;
 use crate::loading::LoadingPlugin;
 use crate::menu::MenuPlugin;
 use crate::player::PlayerPlugin;
@@ -40,6 +42,7 @@ impl Plugin for GamePlugin {
         app.add_state::<GameState>().add_plugins((
             LoadingPlugin,
             MenuPlugin,
+            LevelPlugin,
             ActionsPlugin,
             PlayerPlugin,
             RainPlugin,
