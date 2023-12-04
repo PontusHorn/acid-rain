@@ -1,5 +1,7 @@
 use crate::actions::Actions;
+use crate::health::Health;
 use crate::level::Level;
+use crate::rain::{splash_rain, RainPlayerHit};
 use crate::velocity::{update_position, Velocity};
 use crate::GameState;
 use bevy::prelude::*;
@@ -10,6 +12,10 @@ pub struct PlayerPlugin;
 #[derive(Component)]
 pub struct Player {
     jump_state: JumpState,
+}
+
+impl Player {
+    pub const SIZE: Vec2 = Vec2::splat(32.);
 }
 
 #[derive(PartialEq, Debug)]
@@ -26,8 +32,10 @@ impl Plugin for PlayerPlugin {
         app.add_systems(OnEnter(GameState::Playing), spawn_player)
             .add_systems(
                 Update,
-                update_velocity
-                    .before(update_position)
+                (
+                    update_velocity.before(update_position),
+                    get_hit_by_rain.after(splash_rain),
+                )
                     .run_if(in_state(GameState::Playing)),
             );
     }
@@ -38,7 +46,7 @@ fn spawn_player(mut commands: Commands) {
         .spawn(SpriteBundle {
             sprite: Sprite {
                 color: Color::GREEN,
-                custom_size: Some(Vec2::splat(32.)),
+                custom_size: Some(Player::SIZE),
                 anchor: Anchor::BottomCenter,
                 ..default()
             },
@@ -139,6 +147,14 @@ fn get_velocity_y(
         JumpState::Falling => {
             let new_velocity_y = (velocity_y + FALL_GRAVITY * delta).max(-FALL_SPEED);
             (new_velocity_y, JumpState::Falling)
+        }
+    }
+}
+
+fn get_hit_by_rain(mut rain_player_hit: EventReader<RainPlayerHit>, mut health: ResMut<Health>) {
+    for _ in rain_player_hit.read() {
+        if health.0 > 0 {
+            health.0 -= 1;
         }
     }
 }

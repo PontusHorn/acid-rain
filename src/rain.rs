@@ -2,6 +2,7 @@ use std::f32::consts::PI;
 
 use crate::{
     level::Level,
+    player::Player,
     velocity::{update_position, Velocity},
     GameState,
 };
@@ -20,7 +21,7 @@ enum RainState {
 
 impl Plugin for RainPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
+        app.add_event::<RainPlayerHit>().add_systems(
             Update,
             (
                 spawn_rain,
@@ -63,8 +64,17 @@ fn spawn_rain(mut commands: Commands, camera_query: Query<&OrthographicProjectio
     }
 }
 
-fn splash_rain(mut rain_query: Query<(&mut Rain, &mut Velocity, &mut Transform)>) {
+#[derive(Event)]
+pub struct RainPlayerHit;
+
+pub fn splash_rain(
+    mut rain_query: Query<(&mut Rain, &mut Velocity, &mut Transform)>,
+    player_query: Query<&Transform, (With<Player>, Without<Rain>)>,
+    mut rain_player_hit_writer: EventWriter<RainPlayerHit>,
+) {
     let rng = &mut thread_rng();
+    let player_transform = player_query.single();
+
     for (mut rain, mut rain_velocity, mut rain_transform) in rain_query.iter_mut() {
         match rain.0 {
             RainState::Falling => {
@@ -76,6 +86,8 @@ fn splash_rain(mut rain_query: Query<(&mut Rain, &mut Velocity, &mut Transform)>
                     let splash_speed = SPEED * rng.gen_range(0.2..0.8);
                     rain_transform.rotate_local_z(splash_angle - ANGLE);
                     rain_velocity.0 = Vec2::from_angle(splash_angle) * splash_speed;
+                } else if is_rain_on_player(&rain_transform, player_transform) {
+                    rain_player_hit_writer.send(RainPlayerHit);
                 }
             }
             RainState::Splashing => {
@@ -83,6 +95,17 @@ fn splash_rain(mut rain_query: Query<(&mut Rain, &mut Velocity, &mut Transform)>
             }
         }
     }
+}
+
+fn is_rain_on_player(rain_transform: &Transform, player_transform: &Transform) -> bool {
+    let player_rect = Rect::from_center_size(
+        Vec2::new(
+            player_transform.translation.x,
+            player_transform.translation.y + Player::SIZE.y / 2.,
+        ),
+        Player::SIZE,
+    );
+    player_rect.contains(rain_transform.translation.truncate())
 }
 
 fn despawn_rain(mut commands: Commands, rain_query: Query<(Entity, &Transform), With<Rain>>) {
