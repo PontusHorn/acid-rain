@@ -1,4 +1,5 @@
 use crate::actions::Actions;
+use crate::level::Level;
 use crate::velocity::{update_position, Velocity};
 use crate::GameState;
 use bevy::prelude::*;
@@ -53,7 +54,6 @@ fn spawn_player(mut commands: Commands) {
 const X_SPEED: f32 = 200.;
 const ACCELERATION_X: f32 = 10.;
 const DECELERATION_X: f32 = 15.;
-const GROUND_Y: f32 = -200.;
 
 fn update_velocity(
     time: Res<Time>,
@@ -73,11 +73,11 @@ fn update_velocity(
         );
 
         let distance_above_ground =
-            player_transform.translation.y + new_velocity_y * delta - GROUND_Y;
+            player_transform.translation.y + new_velocity_y * delta - Level::GROUND_Y;
         if new_jump_state == JumpState::Falling && distance_above_ground <= 0. {
             new_velocity_y = 0.;
             new_jump_state = JumpState::Grounded;
-            player_transform.translation.y = GROUND_Y;
+            player_transform.translation.y = Level::GROUND_Y;
         }
         player_velocity.0.x = new_velocity_x;
         player_velocity.0.y = new_velocity_y;

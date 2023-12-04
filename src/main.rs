@@ -1,11 +1,11 @@
 // disable console on windows for release builds
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use acid_rain::GamePlugin;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use bevy::winit::WinitWindows;
 use bevy::DefaultPlugins;
-use acid_rain::GamePlugin;
 use std::io::Cursor;
 use winit::window::Icon;
 
@@ -27,7 +27,7 @@ fn main() {
             ..default()
         }))
         .add_plugins(GamePlugin)
-        // .add_systems(Startup, set_window_icon)
+        .add_systems(Startup, set_window_icon)
         .run();
 }
 
