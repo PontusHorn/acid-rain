@@ -1,15 +1,11 @@
-use bevy::{prelude::*, sprite::Anchor};
+use bevy::prelude::*;
 
-use crate::GameState;
+use crate::{collider::Collider, GameState};
 
 pub struct LevelPlugin;
 
 #[derive(Component)]
 pub struct Level;
-
-impl Level {
-    pub const GROUND_Y: f32 = -200.;
-}
 
 impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
@@ -17,17 +13,41 @@ impl Plugin for LevelPlugin {
     }
 }
 
-fn spawn_level(mut commands: Commands) {
-    commands
-        .spawn(SpriteBundle {
-            sprite: Sprite {
-                color: Color::BLACK,
-                custom_size: Some(Vec2::new(2000., 500.)),
-                anchor: Anchor::TopCenter,
+#[derive(Bundle)]
+struct LevelBundle {
+    sprite: SpriteBundle,
+    collider: Collider,
+    level: Level,
+}
+
+impl LevelBundle {
+    fn from_center_size(position: Vec2, size: Vec2) -> Self {
+        Self {
+            sprite: SpriteBundle {
+                sprite: Sprite {
+                    color: Color::BLACK,
+                    custom_size: Some(size),
+                    ..default()
+                },
+                transform: Transform::from_translation(position.extend(0.)),
                 ..default()
             },
-            transform: Transform::from_translation(Vec3::new(0., Level::GROUND_Y, 0.)),
-            ..default()
-        })
-        .insert(Level);
+            collider: Collider::new(Rect::from_center_size(
+                Vec2::ZERO,
+                Vec2::new(size.x, size.y),
+            )),
+            level: Level,
+        }
+    }
+}
+
+fn spawn_level(mut commands: Commands) {
+    commands.spawn(LevelBundle::from_center_size(
+        Vec2::new(0., -300.),
+        Vec2::new(2000., 200.),
+    ));
+    commands.spawn(LevelBundle::from_center_size(
+        Vec2::new(-400., 0.),
+        Vec2::new(200., 100.),
+    ));
 }

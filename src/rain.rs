@@ -1,6 +1,7 @@
 use std::f32::consts::PI;
 
 use crate::{
+    collider::Collider,
     level::Level,
     player::Player,
     velocity::{update_position, Velocity},
@@ -69,24 +70,35 @@ pub struct RainPlayerHit;
 
 pub fn splash_rain(
     mut rain_query: Query<(&mut Rain, &mut Velocity, &mut Transform)>,
-    player_query: Query<&Transform, (With<Player>, Without<Rain>)>,
+    player_query: Query<(&Transform, &Collider), (With<Player>, Without<Rain>)>,
+    level_query: Query<(&Transform, &Collider), (With<Level>, Without<Rain>)>,
     mut rain_player_hit_writer: EventWriter<RainPlayerHit>,
 ) {
     let rng = &mut thread_rng();
-    let player_transform = player_query.single();
+    let (player_transform, player_collider) = player_query.single();
+    let player_collider = player_collider.translate(player_transform.translation.truncate());
 
     for (mut rain, mut rain_velocity, mut rain_transform) in rain_query.iter_mut() {
+        let rain_position = rain_transform.translation.truncate();
         match rain.0 {
             RainState::Falling => {
-                if rain_transform.translation.y <= Level::GROUND_Y {
+                for (level_transform, level_collider) in level_query.iter() {
+                    let level_collider =
+                        level_collider.translate(level_transform.translation.truncate());
+                    if !level_collider.contains(rain_position) {
+                        continue;
+                    }
                     rain.0 = RainState::Splashing;
-                    rain_transform.translation.y = Level::GROUND_Y;
+                    rain_transform.translation.y = level_collider.0.max.y;
                     rain_transform.scale.x *= rng.gen_range(0.4..0.8);
                     let splash_angle = PI / 2. + rng.gen_range(-0.6..0.6);
                     let splash_speed = SPEED * rng.gen_range(0.2..0.8);
                     rain_transform.rotate_local_z(splash_angle - ANGLE);
                     rain_velocity.0 = Vec2::from_angle(splash_angle) * splash_speed;
-                } else if is_rain_on_player(&rain_transform, player_transform) {
+                    break;
+                }
+
+                if player_collider.contains(rain_position) {
                     rain_player_hit_writer.send(RainPlayerHit);
                 }
             }
@@ -95,17 +107,6 @@ pub fn splash_rain(
             }
         }
     }
-}
-
-fn is_rain_on_player(rain_transform: &Transform, player_transform: &Transform) -> bool {
-    let player_rect = Rect::from_center_size(
-        Vec2::new(
-            player_transform.translation.x,
-            player_transform.translation.y + Player::SIZE.y / 2.,
-        ),
-        Player::SIZE,
-    );
-    player_rect.contains(rain_transform.translation.truncate())
 }
 
 fn despawn_rain(mut commands: Commands, rain_query: Query<(Entity, &Transform), With<Rain>>) {

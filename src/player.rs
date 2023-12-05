@@ -1,4 +1,5 @@
 use crate::actions::Actions;
+use crate::collider::Collider;
 use crate::health::Health;
 use crate::level::Level;
 use crate::rain::{splash_rain, RainPlayerHit};
@@ -15,7 +16,7 @@ pub struct Player {
 }
 
 impl Player {
-    pub const SIZE: Vec2 = Vec2::splat(32.);
+    const SIZE: Vec2 = Vec2::splat(32.);
 }
 
 #[derive(PartialEq, Debug)]
@@ -50,10 +51,14 @@ fn spawn_player(mut commands: Commands) {
                 anchor: Anchor::BottomCenter,
                 ..default()
             },
-            transform: Transform::from_translation(Vec3::new(0., -150., 1.)),
+            transform: Transform::from_translation(Vec3::new(-400., -200., 1.)),
             ..default()
         })
         .insert(Velocity(Vec2::ZERO))
+        .insert(Collider::new(Rect::from_center_size(
+            Vec2::Y * Player::SIZE.y / 2.,
+            Player::SIZE,
+        )))
         .insert(Player {
             jump_state: JumpState::Falling,
         });
@@ -66,12 +71,15 @@ const DECELERATION_X: f32 = 15.;
 fn update_velocity(
     time: Res<Time>,
     actions: Res<Actions>,
-    mut player_query: Query<(&mut Velocity, &mut Transform, &mut Player)>,
+    mut player_query: Query<(&mut Velocity, &mut Transform, &Collider, &mut Player)>,
+    level_query: Query<(&Collider, &Transform), (With<Level>, Without<Player>)>,
 ) {
     let player_movement = actions.player_movement.unwrap_or(Vec2::ZERO);
     let delta = time.delta_seconds();
 
-    for (mut player_velocity, mut player_transform, mut player) in &mut player_query {
+    for (mut player_velocity, mut player_transform, player_collider, mut player) in
+        &mut player_query
+    {
         let new_velocity_x = get_velocity_x(player_velocity.0.x, player_movement.x, delta);
         let (mut new_velocity_y, mut new_jump_state) = get_velocity_y(
             player_velocity.0.y,
@@ -79,14 +87,24 @@ fn update_velocity(
             &player.jump_state,
             delta,
         );
+        let new_velocity = Vec2::new(new_velocity_x, new_velocity_y);
 
-        let distance_above_ground =
-            player_transform.translation.y + new_velocity_y * delta - Level::GROUND_Y;
-        if new_jump_state == JumpState::Falling && distance_above_ground <= 0. {
-            new_velocity_y = 0.;
-            new_jump_state = JumpState::Grounded;
-            player_transform.translation.y = Level::GROUND_Y;
+        if new_jump_state == JumpState::Falling {
+            for (level_collider, level_transform) in level_query.iter() {
+                let new_translation =
+                    player_transform.translation + new_velocity.extend(0.) * delta;
+                let level_collider =
+                    level_collider.translate(level_transform.translation.truncate());
+                let new_player_collider = player_collider.translate(new_translation.truncate());
+                if level_collider.overlaps(&new_player_collider) {
+                    // @TODO: Handle collision in other directions
+                    new_velocity_y = 0.;
+                    new_jump_state = JumpState::Grounded;
+                    player_transform.translation.y = level_collider.0.max.y;
+                }
+            }
         }
+
         player_velocity.0.x = new_velocity_x;
         player_velocity.0.y = new_velocity_y;
         player.jump_state = new_jump_state;
