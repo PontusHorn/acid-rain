@@ -33,8 +33,7 @@ impl Plugin for RainPlugin {
     }
 }
 
-const DENSITY: i8 = 3;
-const LENGTH: f32 = 16.;
+const DENSITY: i8 = 16;
 const ANGLE: f32 = -1.4;
 const SPEED: f32 = 800.;
 
@@ -47,12 +46,14 @@ fn spawn_rain(mut commands: Commands, camera_query: Query<&OrthographicProjectio
             .spawn(SpriteBundle {
                 sprite: Sprite {
                     color: Color::WHITE,
-                    custom_size: Some(Vec2::new(LENGTH, 1.)),
+                    custom_size: Some(Vec2::new(rng.gen_range(4.0..=16.0), 1.)),
                     ..default()
                 },
                 transform: Transform::from_rotation(Quat::from_rotation_z(ANGLE)).with_translation(
                     Vec3::new(
-                        rng.gen_range(camera_projection.area.min.x..camera_projection.area.max.x),
+                        rng.gen_range(
+                            (camera_projection.area.min.x - 200.)..camera_projection.area.max.x,
+                        ),
                         camera_projection.area.max.y,
                         2.,
                     ),
