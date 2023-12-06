@@ -1,7 +1,6 @@
 #![allow(clippy::type_complexity)]
 
 mod actions;
-mod collider;
 mod health;
 mod level;
 mod loading;

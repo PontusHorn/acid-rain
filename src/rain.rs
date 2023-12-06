@@ -1,13 +1,15 @@
 use std::f32::consts::PI;
 
 use crate::{
-    collider::Collider,
     level::Level,
     player::Player,
     velocity::{update_position, Velocity},
     GameState,
 };
-use bevy::{prelude::*, sprite::Anchor};
+use bevy::{
+    prelude::*,
+    sprite::{collide_aabb::collide, Anchor},
+};
 use rand::prelude::*;
 
 pub struct RainPlugin;
@@ -71,35 +73,48 @@ pub struct RainPlayerHit;
 
 pub fn splash_rain(
     mut rain_query: Query<(&mut Rain, &mut Velocity, &mut Transform)>,
-    player_query: Query<(&Transform, &Collider), (With<Player>, Without<Rain>)>,
-    level_query: Query<(&Transform, &Collider), (With<Level>, Without<Rain>)>,
+    player_query: Query<(&Transform, &Player), Without<Rain>>,
+    level_query: Query<(&Transform, &Level), Without<Rain>>,
     mut rain_player_hit_writer: EventWriter<RainPlayerHit>,
 ) {
     let rng = &mut thread_rng();
-    let (player_transform, player_collider) = player_query.single();
-    let player_collider = player_collider.translate(player_transform.translation.truncate());
+    let (player_transform, player) = player_query.single();
 
     for (mut rain, mut rain_velocity, mut rain_transform) in rain_query.iter_mut() {
-        let rain_position = rain_transform.translation.truncate();
+        let rain_translation = rain_transform.translation;
         match rain.0 {
             RainState::Falling => {
-                for (level_transform, level_collider) in level_query.iter() {
-                    let level_collider =
-                        level_collider.translate(level_transform.translation.truncate());
-                    if !level_collider.contains(rain_position) {
-                        continue;
+                for (level_transform, level) in level_query.iter() {
+                    let collision = collide(
+                        rain_translation,
+                        Vec2::ZERO,
+                        level_transform.translation,
+                        level.size(),
+                    );
+                    match collision {
+                        None => continue,
+                        Some(_) => {
+                            // TODO: Different effects for different collisions
+                            rain.0 = RainState::Splashing;
+                            let level_rect = level.rect(level_transform);
+                            rain_transform.translation.y = level_rect.max.y;
+                            rain_transform.scale.x *= rng.gen_range(0.4..0.8);
+                            let splash_angle = PI / 2. + rng.gen_range(-0.6..0.6);
+                            let splash_speed = SPEED * rng.gen_range(0.2..0.8);
+                            rain_transform.rotate_local_z(splash_angle - ANGLE);
+                            rain_velocity.0 = Vec2::from_angle(splash_angle) * splash_speed;
+                            break;
+                        }
                     }
-                    rain.0 = RainState::Splashing;
-                    rain_transform.translation.y = level_collider.0.max.y;
-                    rain_transform.scale.x *= rng.gen_range(0.4..0.8);
-                    let splash_angle = PI / 2. + rng.gen_range(-0.6..0.6);
-                    let splash_speed = SPEED * rng.gen_range(0.2..0.8);
-                    rain_transform.rotate_local_z(splash_angle - ANGLE);
-                    rain_velocity.0 = Vec2::from_angle(splash_angle) * splash_speed;
-                    break;
                 }
 
-                if player_collider.contains(rain_position) {
+                let player_collision = collide(
+                    rain_translation,
+                    Vec2::ZERO,
+                    player.center(&player_transform.translation),
+                    Player::SIZE,
+                );
+                if player_collision.is_some() {
                     rain_player_hit_writer.send(RainPlayerHit);
                 }
             }
