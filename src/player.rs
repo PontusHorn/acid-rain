@@ -50,7 +50,7 @@ fn spawn_player(mut commands: Commands) {
     commands
         .spawn(SpriteBundle {
             sprite: Sprite {
-                color: Color::GREEN,
+                color: Color::rgb(0., 100., 150.),
                 custom_size: Some(Player::SIZE),
                 anchor: Anchor::BottomCenter,
                 ..default()
