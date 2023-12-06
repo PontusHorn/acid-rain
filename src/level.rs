@@ -55,4 +55,8 @@ fn spawn_level(mut commands: Commands) {
         Vec2::new(-400., 0.),
         Vec2::new(200., 100.),
     ));
+    commands.spawn(LevelBundle::from_center_size(
+        Vec2::new(100., -50.),
+        Vec2::new(150., 20.),
+    ));
 }
