@@ -125,9 +125,18 @@ pub fn splash_rain(
     }
 }
 
-fn despawn_rain(mut commands: Commands, rain_query: Query<(Entity, &Transform), With<Rain>>) {
+fn despawn_rain(
+    mut commands: Commands,
+    rain_query: Query<(Entity, &Transform), With<Rain>>,
+    camera_query: Query<&OrthographicProjection>,
+) {
+    let camera_projection = camera_query.single();
     for (entity, rain_transform) in rain_query.iter() {
         if rain_transform.scale.y < 0.1 {
+            commands.entity(entity).despawn();
+        }
+
+        if rain_transform.translation.y < camera_projection.area.min.y - 100. {
             commands.entity(entity).despawn();
         }
     }
