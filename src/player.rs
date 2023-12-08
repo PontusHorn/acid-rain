@@ -43,6 +43,7 @@ impl Plugin for PlayerPlugin {
                 Update,
                 (
                     update_velocity.before(update_position),
+                    fade_out_damage.before(get_hit_by_rain),
                     get_hit_by_rain.after(splash_rain),
                 )
                     .run_if(in_state(GameState::Playing)),
@@ -50,14 +51,13 @@ impl Plugin for PlayerPlugin {
     }
 }
 
-#[derive(Component)]
-pub struct CoyoteTimer(pub Timer);
+const BASE_COLOR: Color = Color::rgb(0., 0.5, 0.8);
 
 fn spawn_player(mut commands: Commands) {
     commands
         .spawn(SpriteBundle {
             sprite: Sprite {
-                color: Color::rgb(0., 100., 150.),
+                color: BASE_COLOR,
                 custom_size: Some(Player::SIZE),
                 anchor: Anchor::BottomCenter,
                 ..default()
@@ -197,10 +197,41 @@ fn get_velocity_y(
     }
 }
 
-fn get_hit_by_rain(mut rain_player_hit: EventReader<RainPlayerHit>, mut health: ResMut<Health>) {
+fn get_hit_by_rain(
+    mut rain_player_hit: EventReader<RainPlayerHit>,
+    mut player_query: Query<&mut Sprite, With<Player>>,
+    mut health: ResMut<Health>,
+) {
+    let mut player_sprite = player_query.single_mut();
     for _ in rain_player_hit.read() {
         if health.0 > 0 {
             health.0 -= 1;
+            player_sprite.color = Color::rgb(0.5, 0.19, 0.38);
         }
     }
+}
+
+fn fade_out_damage(time: Res<Time>, mut player_query: Query<&mut Sprite, With<Player>>) {
+    let delta = time.delta_seconds();
+    for mut player_sprite in player_query.iter_mut() {
+        if player_sprite.color != BASE_COLOR {
+            if colors_equal(player_sprite.color, BASE_COLOR) {
+                player_sprite.color = BASE_COLOR;
+            } else {
+                player_sprite.color =
+                    lerp_colors(player_sprite.color, BASE_COLOR, (3. * delta).min(1.));
+            }
+        }
+    }
+}
+
+fn colors_equal(lhs: Color, rhs: Color) -> bool {
+    let max_diff = 1. / 255.;
+    (lhs.r() - rhs.r()).abs() < max_diff
+        && (lhs.g() - rhs.g()).abs() < max_diff
+        && (lhs.b() - rhs.b()).abs() < max_diff
+}
+
+fn lerp_colors(lhs: Color, rhs: Color, t: f32) -> Color {
+    lhs.as_rgba_linear() * (1.0 - t) + rhs.as_rgba_linear() * t
 }
