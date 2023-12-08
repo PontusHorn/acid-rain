@@ -35,16 +35,20 @@ impl Plugin for RainPlugin {
     }
 }
 
-const DENSITY: i8 = 16;
+const DENSITY: f32 = 32.;
 const ANGLE: f32 = -1.4;
 const SPEED: f32 = 800.;
 const SIZE: Vec2 = Vec2::new(8., 12.);
 
-fn spawn_rain(mut commands: Commands, camera_query: Query<&OrthographicProjection>) {
+fn spawn_rain(
+    mut commands: Commands,
+    time: Res<Time>,
+    camera_query: Query<&OrthographicProjection>,
+) {
     let mut rng = thread_rng();
     let camera_projection = camera_query.single();
 
-    for _ in 0..DENSITY {
+    for _ in 0..(DENSITY * time.delta_seconds() * 60.).round() as u32 {
         commands
             .spawn(SpriteBundle {
                 sprite: Sprite {
