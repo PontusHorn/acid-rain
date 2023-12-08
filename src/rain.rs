@@ -1,7 +1,7 @@
 use std::f32::consts::{FRAC_PI_2, PI};
 
 use crate::{
-    level::Level,
+    collider::Collider,
     player::Player,
     velocity::{update_position, Velocity},
     GameState,
@@ -74,55 +74,37 @@ pub struct RainPlayerHit;
 
 pub fn splash_rain(
     mut rain_query: Query<(&mut Rain, &mut Velocity, &mut Transform)>,
-    player_query: Query<&Transform, (With<Player>, Without<Rain>)>,
-    level_query: Query<(&Transform, &Level), Without<Rain>>,
+    target_query: Query<(&Transform, &Collider, Option<&Player>), Without<Rain>>,
     mut rain_player_hit_writer: EventWriter<RainPlayerHit>,
 ) {
     let rng = &mut thread_rng();
-    let player_transform = player_query.single();
 
     for (mut rain, mut rain_velocity, mut rain_transform) in rain_query.iter_mut() {
         let rain_translation = rain_transform.translation;
         match rain.0 {
             RainState::Falling => {
-                for (level_transform, level) in level_query.iter() {
-                    let level_collision = collide(
+                for (target_transform, target_collider, player) in target_query.iter() {
+                    let Some(target_collision) = collide(
                         rain_translation,
                         SIZE,
-                        level_transform.translation,
-                        level.size(),
-                    );
-                    let level_rect = level.rect(level_transform);
-                    if let Some(collision) = level_collision {
-                        handle_collision(
-                            collision,
-                            rng,
-                            &level_rect,
-                            &mut rain,
-                            &mut rain_velocity,
-                            &mut rain_transform,
-                        );
-                        break;
-                    }
-                }
+                        target_transform.translation,
+                        target_collider.size,
+                    ) else {
+                        continue;
+                    };
 
-                let player_rect = Player::rect(&player_transform.translation);
-                let player_collision = collide(
-                    rain_translation,
-                    Vec2::ZERO,
-                    Player::center(&player_transform.translation),
-                    Player::SIZE,
-                );
-                if let Some(collision) = player_collision {
+                    let target_rect = target_collider.rect(target_transform);
                     handle_collision(
-                        collision,
+                        target_collision,
                         rng,
-                        &player_rect,
-                        &mut rain,
-                        &mut rain_velocity,
-                        &mut rain_transform,
+                        &target_rect,
+                        (&mut rain, &mut rain_velocity, &mut rain_transform),
                     );
-                    rain_player_hit_writer.send(RainPlayerHit);
+
+                    if player.is_some() {
+                        rain_player_hit_writer.send(RainPlayerHit);
+                    }
+                    break;
                 }
             }
             RainState::Splashing => {
@@ -136,16 +118,14 @@ fn handle_collision(
     collision: Collision,
     rng: &mut ThreadRng,
     rect: &Rect,
-    rain: &mut Rain,
-    rain_velocity: &mut Velocity,
-    rain_transform: &mut Transform,
+    (rain, rain_velocity, rain_transform): (&mut Rain, &mut Velocity, &mut Transform),
 ) {
     match collision {
         Collision::Top | Collision::Inside => {
-            splash_against_top_side(rng, rect, rain, rain_velocity, rain_transform);
+            splash_against_top_side(rng, rect, (rain, rain_velocity, rain_transform));
         }
         Collision::Left => {
-            run_along_left_side(rng, rect, rain_velocity, rain_transform);
+            run_along_left_side(rng, rect, (rain_velocity, rain_transform));
         }
         _ => {
             // Other collisions are very unlikely to happen due
@@ -160,9 +140,7 @@ fn handle_collision(
 fn splash_against_top_side(
     rng: &mut ThreadRng,
     rect: &Rect,
-    rain: &mut Rain,
-    rain_velocity: &mut Velocity,
-    rain_transform: &mut Transform,
+    (rain, rain_velocity, rain_transform): (&mut Rain, &mut Velocity, &mut Transform),
 ) {
     rain.0 = RainState::Splashing;
     rain_transform.translation.y = rect.max.y;
@@ -177,8 +155,7 @@ fn splash_against_top_side(
 fn run_along_left_side(
     rng: &mut ThreadRng,
     rect: &Rect,
-    rain_velocity: &mut Velocity,
-    rain_transform: &mut Transform,
+    (rain_velocity, rain_transform): (&mut Velocity, &mut Transform),
 ) {
     rain_transform.translation.x = rect.min.x;
     rain_transform.scale.x *= rng.gen_range(0.7..0.9);

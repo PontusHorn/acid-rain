@@ -1,4 +1,5 @@
 use crate::actions::Actions;
+use crate::collider::Collider;
 use crate::health::Health;
 use crate::level::Level;
 use crate::rain::{splash_rain, RainPlayerHit};
@@ -16,15 +17,7 @@ pub struct Player {
 }
 
 impl Player {
-    pub const SIZE: Vec2 = Vec2::splat(32.);
-
-    pub fn center(translation: &Vec3) -> Vec3 {
-        Vec3::new(0., Self::SIZE.y / 2., 0.) + *translation
-    }
-
-    pub fn rect(translation: &Vec3) -> Rect {
-        Rect::from_center_size(Self::center(translation).truncate(), Self::SIZE)
-    }
+    const SIZE: Vec2 = Vec2::splat(32.);
 }
 
 #[derive(PartialEq, Debug)]
@@ -66,6 +59,10 @@ fn spawn_player(mut commands: Commands) {
             ..default()
         })
         .insert(Velocity(Vec2::ZERO))
+        .insert(Collider::from_center_size(
+            Vec2::new(0., Player::SIZE.y / 2.),
+            Player::SIZE,
+        ))
         .insert(Player {
             jump_state: JumpState::Falling,
         });
@@ -78,13 +75,15 @@ const DECELERATION_X: f32 = 15.;
 fn update_velocity(
     time: Res<Time>,
     actions: Res<Actions>,
-    mut player_query: Query<(&mut Velocity, &mut Transform, &mut Player)>,
-    level_query: Query<(&Transform, &Level), Without<Player>>,
+    mut player_query: Query<(&mut Velocity, &mut Transform, &Collider, &mut Player)>,
+    level_query: Query<(&Transform, &Collider), (With<Level>, Without<Player>)>,
 ) {
     let player_movement = actions.player_movement.unwrap_or(Vec2::ZERO);
     let delta = time.delta_seconds();
 
-    for (mut player_velocity, mut player_transform, mut player) in player_query.iter_mut() {
+    for (mut player_velocity, mut player_transform, player_collider, mut player) in
+        player_query.iter_mut()
+    {
         let new_velocity_x = get_velocity_x(player_velocity.0.x, player_movement.x, delta);
         let (new_velocity_y, mut new_jump_state) = get_velocity_y(
             player_velocity.0.y,
@@ -93,39 +92,38 @@ fn update_velocity(
             delta,
         );
         let mut new_velocity = Vec2::new(new_velocity_x, new_velocity_y);
+        let mut new_transform = player_transform
+            .with_translation(player_transform.translation + new_velocity.extend(0.) * delta);
         let mut is_on_ground = false;
 
-        for (level_transform, level) in level_query.iter() {
-            let new_translation = player_transform.translation + new_velocity.extend(0.) * delta;
+        for (level_transform, level_collider) in level_query.iter() {
+            let player_rect = player_collider.rect(&new_transform);
+            let level_rect = level_collider.rect(level_transform);
             let collision = collide(
-                Player::center(&new_translation),
-                Player::SIZE,
+                new_transform.translation,
+                player_rect.size(),
                 level_transform.translation,
-                level.size(),
+                level_rect.size(),
             );
-            let level_rect = level.rect(level_transform);
             match collision {
                 None => continue,
-                Some(Collision::Top) => {
+                Some(Collision::Top) | Some(Collision::Inside) => {
                     new_velocity.y = 0.;
                     new_jump_state = JumpState::Grounded;
                     is_on_ground = true;
-                    player_transform.translation.y = level_rect.max.y;
+                    new_transform.translation.y = level_rect.max.y;
                 }
                 Some(Collision::Bottom) => {
                     new_velocity.y = 0.;
-                    player_transform.translation.y = level_rect.min.y - Player::SIZE.y;
+                    new_transform.translation.y = level_rect.min.y - Player::SIZE.y;
                 }
                 Some(Collision::Left) => {
                     new_velocity.x = 0.;
-                    player_transform.translation.x = level_rect.min.x - Player::SIZE.x / 2.;
+                    new_transform.translation.x = level_rect.min.x - Player::SIZE.x / 2.;
                 }
                 Some(Collision::Right) => {
                     new_velocity.x = 0.;
-                    player_transform.translation.x = level_rect.max.x + Player::SIZE.x / 2.;
-                }
-                Some(Collision::Inside) => {
-                    new_velocity = Vec2::ZERO;
+                    new_transform.translation.x = level_rect.max.x + Player::SIZE.x / 2.;
                 }
             }
         }
@@ -134,6 +132,7 @@ fn update_velocity(
             new_jump_state = JumpState::Falling;
         }
 
+        player_transform.apply(&new_transform);
         player_velocity.0 = new_velocity;
         player.jump_state = new_jump_state;
     }

@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::GameState;
+use crate::{collider::Collider, GameState};
 
 pub struct LevelPlugin;
 
@@ -11,21 +11,12 @@ impl Plugin for LevelPlugin {
 }
 
 #[derive(Component)]
-pub struct Level(pub Vec2);
-
-impl Level {
-    pub fn size(&self) -> Vec2 {
-        self.0
-    }
-
-    pub fn rect(&self, transform: &Transform) -> Rect {
-        Rect::from_center_size(transform.translation.truncate(), self.size())
-    }
-}
+pub struct Level;
 
 #[derive(Bundle)]
 struct LevelBundle {
     sprite: SpriteBundle,
+    collider: Collider,
     level: Level,
 }
 
@@ -41,7 +32,8 @@ impl LevelBundle {
                 transform: Transform::from_translation(position.extend(0.)),
                 ..default()
             },
-            level: Level(size),
+            collider: Collider::from_size(size),
+            level: Level,
         }
     }
 }
