@@ -1,4 +1,4 @@
-use std::f32::consts::PI;
+use std::f32::consts::{FRAC_PI_2, PI};
 
 use crate::{
     level::Level,
@@ -8,7 +8,7 @@ use crate::{
 };
 use bevy::{
     prelude::*,
-    sprite::{collide_aabb::collide, Anchor},
+    sprite::{collide_aabb::*, Anchor},
 };
 use rand::prelude::*;
 
@@ -38,6 +38,7 @@ impl Plugin for RainPlugin {
 const DENSITY: i8 = 16;
 const ANGLE: f32 = -1.4;
 const SPEED: f32 = 800.;
+const SIZE: Vec2 = Vec2::new(8., 12.);
 
 fn spawn_rain(mut commands: Commands, camera_query: Query<&OrthographicProjection>) {
     let mut rng = thread_rng();
@@ -87,22 +88,43 @@ pub fn splash_rain(
                 for (level_transform, level) in level_query.iter() {
                     let collision = collide(
                         rain_translation,
-                        Vec2::ZERO,
+                        SIZE,
                         level_transform.translation,
                         level.size(),
                     );
+                    let level_rect = level.rect(level_transform);
+                    // if let Some(c) = collision {
+                    //     info!("{:?}", c);
+                    // }
                     match collision {
                         None => continue,
-                        Some(_) => {
-                            // TODO: Different effects for different collisions
+                        Some(Collision::Top) | Some(Collision::Inside) => {
                             rain.0 = RainState::Splashing;
-                            let level_rect = level.rect(level_transform);
                             rain_transform.translation.y = level_rect.max.y;
-                            rain_transform.scale.x *= rng.gen_range(0.4..0.8);
-                            let splash_angle = PI / 2. + rng.gen_range(-0.6..0.6);
-                            let splash_speed = SPEED * rng.gen_range(0.2..0.8);
+                            rain_transform.scale.x *= rng.gen_range(0.2..0.6);
+                            let splash_angle_offset = rng.gen_range(-FRAC_PI_2..FRAC_PI_2);
+                            let splash_angle = FRAC_PI_2 + splash_angle_offset;
+                            let splash_speed =
+                                SPEED * rng.gen_range(0.1..0.4) * (0.3 + splash_angle_offset.abs());
                             rain_transform.rotate_local_z(splash_angle - ANGLE);
                             rain_velocity.0 = Vec2::from_angle(splash_angle) * splash_speed;
+                            break;
+                        }
+                        Some(Collision::Left) => {
+                            rain_transform.translation.x = level_rect.min.x;
+                            rain_transform.scale.x *= rng.gen_range(0.7..0.9);
+                            let splash_angle = PI * 1.5 - rng.gen_range(0.0..0.03);
+                            let splash_speed = SPEED * rng.gen_range(0.4..0.8);
+                            rain_transform.rotation = Quat::from_rotation_z(splash_angle);
+                            rain_velocity.0 = Vec2::from_angle(splash_angle) * splash_speed;
+                            break;
+                        }
+                        Some(_) => {
+                            // Other collisions are very unlikely to happen due
+                            // to the direction of the rain fall, so just scale
+                            // it down to let despawn_rain() handle it.
+                            rain.0 = RainState::Splashing;
+                            rain_transform.scale.x = 0.;
                             break;
                         }
                     }
