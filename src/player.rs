@@ -18,8 +18,12 @@ pub struct Player {
 impl Player {
     pub const SIZE: Vec2 = Vec2::splat(32.);
 
-    pub fn center(&self, translation: &Vec3) -> Vec3 {
+    pub fn center(translation: &Vec3) -> Vec3 {
         Vec3::new(0., Self::SIZE.y / 2., 0.) + *translation
+    }
+
+    pub fn rect(translation: &Vec3) -> Rect {
+        Rect::from_center_size(Self::center(translation).truncate(), Self::SIZE)
     }
 }
 
@@ -94,7 +98,7 @@ fn update_velocity(
         for (level_transform, level) in level_query.iter() {
             let new_translation = player_transform.translation + new_velocity.extend(0.) * delta;
             let collision = collide(
-                player.center(&new_translation),
+                Player::center(&new_translation),
                 Player::SIZE,
                 level_transform.translation,
                 level.size(),

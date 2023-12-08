@@ -74,69 +74,54 @@ pub struct RainPlayerHit;
 
 pub fn splash_rain(
     mut rain_query: Query<(&mut Rain, &mut Velocity, &mut Transform)>,
-    player_query: Query<(&Transform, &Player), Without<Rain>>,
+    player_query: Query<&Transform, (With<Player>, Without<Rain>)>,
     level_query: Query<(&Transform, &Level), Without<Rain>>,
     mut rain_player_hit_writer: EventWriter<RainPlayerHit>,
 ) {
     let rng = &mut thread_rng();
-    let (player_transform, player) = player_query.single();
+    let player_transform = player_query.single();
 
     for (mut rain, mut rain_velocity, mut rain_transform) in rain_query.iter_mut() {
         let rain_translation = rain_transform.translation;
         match rain.0 {
             RainState::Falling => {
                 for (level_transform, level) in level_query.iter() {
-                    let collision = collide(
+                    let level_collision = collide(
                         rain_translation,
                         SIZE,
                         level_transform.translation,
                         level.size(),
                     );
                     let level_rect = level.rect(level_transform);
-                    // if let Some(c) = collision {
-                    //     info!("{:?}", c);
-                    // }
-                    match collision {
-                        None => continue,
-                        Some(Collision::Top) | Some(Collision::Inside) => {
-                            rain.0 = RainState::Splashing;
-                            rain_transform.translation.y = level_rect.max.y;
-                            rain_transform.scale.x *= rng.gen_range(0.2..0.6);
-                            let splash_angle_offset = rng.gen_range(-FRAC_PI_2..FRAC_PI_2);
-                            let splash_angle = FRAC_PI_2 + splash_angle_offset;
-                            let splash_speed =
-                                SPEED * rng.gen_range(0.1..0.4) * (0.3 + splash_angle_offset.abs());
-                            rain_transform.rotate_local_z(splash_angle - ANGLE);
-                            rain_velocity.0 = Vec2::from_angle(splash_angle) * splash_speed;
-                            break;
-                        }
-                        Some(Collision::Left) => {
-                            rain_transform.translation.x = level_rect.min.x;
-                            rain_transform.scale.x *= rng.gen_range(0.7..0.9);
-                            let splash_angle = PI * 1.5 - rng.gen_range(0.0..0.03);
-                            let splash_speed = SPEED * rng.gen_range(0.4..0.8);
-                            rain_transform.rotation = Quat::from_rotation_z(splash_angle);
-                            rain_velocity.0 = Vec2::from_angle(splash_angle) * splash_speed;
-                            break;
-                        }
-                        Some(_) => {
-                            // Other collisions are very unlikely to happen due
-                            // to the direction of the rain fall, so just scale
-                            // it down to let despawn_rain() handle it.
-                            rain.0 = RainState::Splashing;
-                            rain_transform.scale.x = 0.;
-                            break;
-                        }
+                    if let Some(collision) = level_collision {
+                        handle_collision(
+                            collision,
+                            rng,
+                            &level_rect,
+                            &mut rain,
+                            &mut rain_velocity,
+                            &mut rain_transform,
+                        );
+                        break;
                     }
                 }
 
+                let player_rect = Player::rect(&player_transform.translation);
                 let player_collision = collide(
                     rain_translation,
                     Vec2::ZERO,
-                    player.center(&player_transform.translation),
+                    Player::center(&player_transform.translation),
                     Player::SIZE,
                 );
-                if player_collision.is_some() {
+                if let Some(collision) = player_collision {
+                    handle_collision(
+                        collision,
+                        rng,
+                        &player_rect,
+                        &mut rain,
+                        &mut rain_velocity,
+                        &mut rain_transform,
+                    );
                     rain_player_hit_writer.send(RainPlayerHit);
                 }
             }
@@ -145,6 +130,62 @@ pub fn splash_rain(
             }
         }
     }
+}
+
+fn handle_collision(
+    collision: Collision,
+    rng: &mut ThreadRng,
+    rect: &Rect,
+    rain: &mut Rain,
+    rain_velocity: &mut Velocity,
+    rain_transform: &mut Transform,
+) {
+    match collision {
+        Collision::Top | Collision::Inside => {
+            splash_against_top_side(rng, rect, rain, rain_velocity, rain_transform);
+        }
+        Collision::Left => {
+            run_along_left_side(rng, rect, rain_velocity, rain_transform);
+        }
+        _ => {
+            // Other collisions are very unlikely to happen due
+            // to the direction of the rain fall, so just scale
+            // it down to let despawn_rain() handle it.
+            rain.0 = RainState::Splashing;
+            rain_transform.scale.x = 0.;
+        }
+    }
+}
+
+fn splash_against_top_side(
+    rng: &mut ThreadRng,
+    rect: &Rect,
+    rain: &mut Rain,
+    rain_velocity: &mut Velocity,
+    rain_transform: &mut Transform,
+) {
+    rain.0 = RainState::Splashing;
+    rain_transform.translation.y = rect.max.y;
+    rain_transform.scale.x *= rng.gen_range(0.2..0.6);
+    let splash_angle_offset = rng.gen_range(-FRAC_PI_2..FRAC_PI_2);
+    let splash_angle = FRAC_PI_2 + splash_angle_offset;
+    let splash_speed = SPEED * rng.gen_range(0.1..0.4) * (0.3 + splash_angle_offset.abs());
+    rain_transform.rotate_local_z(splash_angle - ANGLE);
+    rain_velocity.0 = Vec2::from_angle(splash_angle) * splash_speed;
+}
+
+fn run_along_left_side(
+    rng: &mut ThreadRng,
+    rect: &Rect,
+    rain_velocity: &mut Velocity,
+    rain_transform: &mut Transform,
+) {
+    rain_transform.translation.x = rect.min.x;
+    rain_transform.scale.x *= rng.gen_range(0.7..0.9);
+    let splash_angle = PI * 1.5 - rng.gen_range(0.0..0.03);
+    let splash_speed = SPEED * rng.gen_range(0.4..0.8);
+    rain_transform.rotation = Quat::from_rotation_z(splash_angle);
+    rain_velocity.0 = Vec2::from_angle(splash_angle) * splash_speed;
 }
 
 fn despawn_rain(
