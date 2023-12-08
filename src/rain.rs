@@ -2,7 +2,6 @@ use std::f32::consts::{FRAC_PI_2, PI};
 
 use crate::{
     collider::Collider,
-    player::Player,
     velocity::{update_position, Velocity},
     GameState,
 };
@@ -17,6 +16,7 @@ pub struct RainPlugin;
 #[derive(Component)]
 pub struct Rain(RainState);
 
+#[derive(PartialEq, Debug)]
 enum RainState {
     Falling,
     Splashing,
@@ -24,7 +24,7 @@ enum RainState {
 
 impl Plugin for RainPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<RainPlayerHit>().add_systems(
+        app.add_event::<RainHit>().add_systems(
             Update,
             (
                 spawn_rain,
@@ -73,47 +73,61 @@ fn spawn_rain(
     }
 }
 
+#[derive(Component)]
+pub struct RainHitListener;
+
 #[derive(Event)]
-pub struct RainPlayerHit;
+pub struct RainHit(pub Entity);
 
 pub fn splash_rain(
     mut rain_query: Query<(&mut Rain, &mut Velocity, &mut Transform)>,
-    target_query: Query<(&Transform, &Collider, Option<&Player>), Without<Rain>>,
-    mut rain_player_hit_writer: EventWriter<RainPlayerHit>,
+    target_query: Query<
+        (
+            &GlobalTransform,
+            &Collider,
+            Entity,
+            Option<&RainHitListener>,
+        ),
+        Without<Rain>,
+    >,
+    mut rain_hit_writer: EventWriter<RainHit>,
 ) {
     let rng = &mut thread_rng();
 
     for (mut rain, mut rain_velocity, mut rain_transform) in rain_query.iter_mut() {
+        if rain.0 == RainState::Splashing {
+            rain_transform.scale.y *= 0.7;
+            continue;
+        }
+
         let rain_translation = rain_transform.translation;
-        match rain.0 {
-            RainState::Falling => {
-                for (target_transform, target_collider, player) in target_query.iter() {
-                    let Some(target_collision) = collide(
-                        rain_translation,
-                        SIZE,
-                        target_transform.translation,
-                        target_collider.size,
-                    ) else {
-                        continue;
-                    };
-
-                    let target_rect = target_collider.rect(target_transform);
-                    handle_collision(
-                        target_collision,
-                        rng,
-                        &target_rect,
-                        (&mut rain, &mut rain_velocity, &mut rain_transform),
-                    );
-
-                    if player.is_some() {
-                        rain_player_hit_writer.send(RainPlayerHit);
-                    }
-                    break;
-                }
+        for (target_transform, target_collider, target_entity, hit_listener) in target_query.iter()
+        {
+            if !target_collider.solid {
+                continue;
             }
-            RainState::Splashing => {
-                rain_transform.scale.y *= 0.7;
+
+            let target_rect = target_collider.rect(&target_transform.translation());
+            let Some(target_collision) = collide(
+                rain_translation,
+                SIZE,
+                target_rect.center().extend(0.),
+                target_collider.size,
+            ) else {
+                continue;
+            };
+
+            handle_collision(
+                target_collision,
+                rng,
+                &target_rect,
+                (&mut rain, &mut rain_velocity, &mut rain_transform),
+            );
+
+            if hit_listener.is_some() {
+                rain_hit_writer.send(RainHit(target_entity));
             }
+            break;
         }
     }
 }

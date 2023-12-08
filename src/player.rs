@@ -1,8 +1,10 @@
 use crate::actions::Actions;
 use crate::collider::Collider;
+use crate::color::*;
 use crate::health::Health;
 use crate::level::Level;
-use crate::rain::{splash_rain, RainPlayerHit};
+use crate::rain::*;
+use crate::shield::ShieldBundle;
 use crate::velocity::{update_position, Velocity};
 use crate::GameState;
 use bevy::prelude::*;
@@ -17,7 +19,13 @@ pub struct Player {
 }
 
 impl Player {
+    const COLOR_BASE: Color = Color::rgb(0., 0.5, 0.8);
+    const COLOR_HIT: Color = Color::rgb(0.5, 0.19, 0.38);
     const SIZE: Vec2 = Vec2::splat(32.);
+
+    fn local_center() -> Vec2 {
+        Vec2::new(0., Self::SIZE.y / 2.)
+    }
 }
 
 #[derive(PartialEq, Debug)]
@@ -44,28 +52,31 @@ impl Plugin for PlayerPlugin {
     }
 }
 
-const BASE_COLOR: Color = Color::rgb(0., 0.5, 0.8);
-
 fn spawn_player(mut commands: Commands) {
-    commands
-        .spawn(SpriteBundle {
+    let player = (
+        SpriteBundle {
             sprite: Sprite {
-                color: BASE_COLOR,
+                color: Player::COLOR_BASE,
                 custom_size: Some(Player::SIZE),
                 anchor: Anchor::BottomCenter,
                 ..default()
             },
             transform: Transform::from_translation(Vec3::new(-400., -180., 1.)),
             ..default()
-        })
-        .insert(Velocity(Vec2::ZERO))
-        .insert(Collider::from_center_size(
-            Vec2::new(0., Player::SIZE.y / 2.),
-            Player::SIZE,
-        ))
-        .insert(Player {
+        },
+        Velocity(Vec2::ZERO),
+        Collider::from_center_size(Player::local_center(), Player::SIZE),
+        RainHitListener,
+        Player {
             jump_state: JumpState::Falling,
-        });
+        },
+    );
+
+    commands.spawn(player).with_children(|commands| {
+        commands.spawn(ShieldBundle::new(Transform::from_translation(
+            Player::local_center().extend(-10.),
+        )));
+    });
 }
 
 const X_SPEED: f32 = 200.;
@@ -76,7 +87,7 @@ fn update_velocity(
     time: Res<Time>,
     actions: Res<Actions>,
     mut player_query: Query<(&mut Velocity, &mut Transform, &Collider, &mut Player)>,
-    level_query: Query<(&Transform, &Collider), (With<Level>, Without<Player>)>,
+    level_query: Query<(&GlobalTransform, &Collider), (With<Level>, Without<Player>)>,
 ) {
     let player_movement = actions.player_movement.unwrap_or(Vec2::ZERO);
     let delta = time.delta_seconds();
@@ -97,17 +108,20 @@ fn update_velocity(
         let mut is_on_ground = false;
 
         for (level_transform, level_collider) in level_query.iter() {
-            let player_rect = player_collider.rect(&new_transform);
-            let level_rect = level_collider.rect(level_transform);
+            let player_rect = player_collider.rect(&new_transform.translation);
+            let level_rect = level_collider.rect(&level_transform.translation());
             let collision = collide(
                 new_transform.translation,
                 player_rect.size(),
-                level_transform.translation,
+                level_rect.center().extend(0.),
                 level_rect.size(),
             );
             match collision {
                 None => continue,
                 Some(Collision::Top) | Some(Collision::Inside) => {
+                    if let JumpState::Jumping(_) = new_jump_state {
+                        continue;
+                    }
                     new_velocity.y = 0.;
                     new_jump_state = JumpState::Grounded;
                     is_on_ground = true;
@@ -153,7 +167,7 @@ fn get_velocity_x(velocity_x: f32, movement_x: f32, delta: f32) -> f32 {
     new_vel_x
 }
 
-const JUMP_SPEED: f32 = 800.;
+const JUMP_SPEED: f32 = 400.;
 const JUMP_GRAVITY: f32 = -1000.;
 const FALL_SPEED: f32 = 400.;
 const FALL_GRAVITY: f32 = -1000.;
@@ -197,15 +211,16 @@ fn get_velocity_y(
 }
 
 fn get_hit_by_rain(
-    mut rain_player_hit: EventReader<RainPlayerHit>,
-    mut player_query: Query<&mut Sprite, With<Player>>,
+    mut rain_hit: EventReader<RainHit>,
+    mut player_query: Query<(&mut Sprite, Entity), With<Player>>,
     mut health: ResMut<Health>,
 ) {
-    let mut player_sprite = player_query.single_mut();
-    for _ in rain_player_hit.read() {
-        if health.0 > 0 {
-            health.0 -= 1;
-            player_sprite.color = Color::rgb(0.5, 0.19, 0.38);
+    for (mut player_sprite, player_entity) in player_query.iter_mut() {
+        for RainHit(entity) in rain_hit.read() {
+            if player_entity == *entity && health.0 > 0 {
+                health.0 -= 1;
+                player_sprite.color = Player::COLOR_HIT;
+            }
         }
     }
 }
@@ -213,24 +228,16 @@ fn get_hit_by_rain(
 fn fade_out_damage(time: Res<Time>, mut player_query: Query<&mut Sprite, With<Player>>) {
     let delta = time.delta_seconds();
     for mut player_sprite in player_query.iter_mut() {
-        if player_sprite.color != BASE_COLOR {
-            if colors_equal(player_sprite.color, BASE_COLOR) {
-                player_sprite.color = BASE_COLOR;
+        if player_sprite.color != Player::COLOR_BASE {
+            if colors_equal(player_sprite.color, Player::COLOR_BASE) {
+                player_sprite.color = Player::COLOR_BASE;
             } else {
-                player_sprite.color =
-                    lerp_colors(player_sprite.color, BASE_COLOR, (3. * delta).min(1.));
+                player_sprite.color = lerp_colors(
+                    player_sprite.color,
+                    Player::COLOR_BASE,
+                    (3. * delta).min(1.),
+                );
             }
         }
     }
-}
-
-fn colors_equal(lhs: Color, rhs: Color) -> bool {
-    let max_diff = 1. / 255.;
-    (lhs.r() - rhs.r()).abs() < max_diff
-        && (lhs.g() - rhs.g()).abs() < max_diff
-        && (lhs.b() - rhs.b()).abs() < max_diff
-}
-
-fn lerp_colors(lhs: Color, rhs: Color, t: f32) -> Color {
-    lhs.as_rgba_linear() * (1.0 - t) + rhs.as_rgba_linear() * t
 }

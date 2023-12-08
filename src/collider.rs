@@ -4,6 +4,7 @@ use bevy::prelude::*;
 pub struct Collider {
     pub size: Vec2,
     pub center: Vec2,
+    pub solid: bool,
 }
 
 impl Collider {
@@ -12,16 +13,29 @@ impl Collider {
     }
 
     pub fn from_center_size(center: Vec2, size: Vec2) -> Self {
-        Self { size, center }
+        Self {
+            size,
+            center,
+            ..default()
+        }
     }
 
-    pub fn rect(&self, transform: &Transform) -> Rect {
-        Rect::from_center_size(transform.translation.truncate() + self.center, self.size)
+    pub fn rect(&self, translation: &Vec3) -> Rect {
+        Rect::from_center_size(translation.truncate() + self.center, self.size)
+    }
+
+    pub fn with_solid(mut self, solid: bool) -> Self {
+        self.solid = solid;
+        self
     }
 }
 
 impl Default for Collider {
     fn default() -> Self {
-        Self::from_center_size(Vec2::ZERO, Vec2::ZERO)
+        Self {
+            size: Vec2::ZERO,
+            center: Vec2::ZERO,
+            solid: true,
+        }
     }
 }

@@ -2,12 +2,15 @@
 
 mod actions;
 mod collider;
+mod color;
 mod health;
 mod level;
 mod loading;
 mod menu;
 mod player;
+mod power;
 mod rain;
+mod shield;
 mod velocity;
 
 use crate::actions::ActionsPlugin;
@@ -16,7 +19,9 @@ use crate::level::LevelPlugin;
 use crate::loading::LoadingPlugin;
 use crate::menu::MenuPlugin;
 use crate::player::PlayerPlugin;
+use crate::power::PowerPlugin;
 use crate::rain::RainPlugin;
+use crate::shield::ShieldPlugin;
 use crate::velocity::VelocityPlugin;
 
 use bevy::app::App;
@@ -50,7 +55,9 @@ impl Plugin for GamePlugin {
             LevelPlugin,
             ActionsPlugin,
             PlayerPlugin,
+            ShieldPlugin,
             HealthPlugin,
+            PowerPlugin,
             RainPlugin,
             VelocityPlugin,
         ));
