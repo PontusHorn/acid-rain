@@ -46,6 +46,9 @@ impl Plugin for PlayerPlugin {
     }
 }
 
+#[derive(Component)]
+pub struct CoyoteTimer(pub Timer);
+
 fn spawn_player(mut commands: Commands) {
     commands
         .spawn(SpriteBundle {
@@ -86,6 +89,7 @@ fn update_velocity(
             delta,
         );
         let mut new_velocity = Vec2::new(new_velocity_x, new_velocity_y);
+        let mut is_on_ground = false;
 
         for (level_transform, level) in level_query.iter() {
             let new_translation = player_transform.translation + new_velocity.extend(0.) * delta;
@@ -101,6 +105,7 @@ fn update_velocity(
                 Some(Collision::Top) => {
                     new_velocity.y = 0.;
                     new_jump_state = JumpState::Grounded;
+                    is_on_ground = true;
                     player_transform.translation.y = level_rect.max.y;
                 }
                 Some(Collision::Bottom) => {
@@ -119,6 +124,10 @@ fn update_velocity(
                     new_velocity = Vec2::ZERO;
                 }
             }
+        }
+
+        if !is_on_ground && player.jump_state == JumpState::Grounded {
+            new_jump_state = JumpState::Falling;
         }
 
         player_velocity.0 = new_velocity;
@@ -157,7 +166,7 @@ fn get_velocity_y(
             if movement_y > 0. {
                 (JUMP_SPEED, JumpState::Jumping(1.))
             } else {
-                (0., JumpState::Grounded)
+                (-1., JumpState::Grounded)
             }
         }
         JumpState::Jumping(jump_power) => {
