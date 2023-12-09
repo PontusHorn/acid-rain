@@ -8,6 +8,7 @@ mod health;
 mod level;
 mod loading;
 mod menu;
+mod menu_button;
 mod player;
 mod power;
 mod rain;
@@ -20,6 +21,7 @@ use crate::health::HealthPlugin;
 use crate::level::LevelPlugin;
 use crate::loading::LoadingPlugin;
 use crate::menu::MenuPlugin;
+use crate::menu_button::MenuButtonPlugin;
 use crate::player::PlayerPlugin;
 use crate::power::PowerPlugin;
 use crate::rain::RainPlugin;
@@ -41,6 +43,7 @@ impl Plugin for GamePlugin {
             AppStatePlugin,
             LoadingPlugin,
             MenuPlugin,
+            MenuButtonPlugin,
             LevelPlugin,
             ActionsPlugin,
             PlayerPlugin,

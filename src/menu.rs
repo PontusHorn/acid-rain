@@ -1,4 +1,4 @@
-use crate::app_state::*;
+use crate::{app_state::*, menu_button::*};
 use bevy::prelude::*;
 
 pub struct MenuPlugin;
@@ -6,23 +6,8 @@ pub struct MenuPlugin;
 impl Plugin for MenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(AppState::Menu), setup_menu)
-            .add_systems(Update, click_play_button.run_if(in_state(AppState::Menu)))
+            .add_systems(Update, click_button.run_if(in_state(AppState::Menu)))
             .add_systems(OnExit(AppState::Menu), cleanup_menu);
-    }
-}
-
-#[derive(Component)]
-struct ButtonColors {
-    normal: Color,
-    hovered: Color,
-}
-
-impl Default for ButtonColors {
-    fn default() -> Self {
-        ButtonColors {
-            normal: Color::rgb(0.15, 0.15, 0.15),
-            hovered: Color::rgb(0.25, 0.25, 0.25),
-        }
     }
 }
 
@@ -30,7 +15,6 @@ impl Default for ButtonColors {
 struct Menu;
 
 fn setup_menu(mut commands: Commands) {
-    info!("menu");
     commands.spawn(Camera2dBundle::default());
     commands
         .spawn((
@@ -48,32 +32,13 @@ fn setup_menu(mut commands: Commands) {
             Menu,
         ))
         .with_children(|children| {
-            let button_colors = ButtonColors::default();
             children
                 .spawn((
-                    ButtonBundle {
-                        style: Style {
-                            width: Val::Px(140.0),
-                            height: Val::Px(50.0),
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
-                            ..Default::default()
-                        },
-                        background_color: button_colors.normal.into(),
-                        ..Default::default()
-                    },
-                    button_colors,
-                    ChangeState(AppState::InGame),
+                    MenuButtonBundle::default().with_width(Val::Px(140.0)),
+                    MenuAction::ChangeState(AppState::InGame),
                 ))
                 .with_children(|parent| {
-                    parent.spawn(TextBundle::from_section(
-                        "Play",
-                        TextStyle {
-                            font_size: 40.0,
-                            color: Color::rgb(0.9, 0.9, 0.9),
-                            ..default()
-                        },
-                    ));
+                    parent.spawn(MenuButtonLabelBundle::from_text("Play"));
                 });
         });
     commands
@@ -95,102 +60,48 @@ fn setup_menu(mut commands: Commands) {
         .with_children(|children| {
             children
                 .spawn((
-                    ButtonBundle {
-                        style: Style {
-                            width: Val::Px(170.0),
-                            height: Val::Px(50.0),
-                            justify_content: JustifyContent::SpaceAround,
-                            align_items: AlignItems::Center,
-                            padding: UiRect::all(Val::Px(5.)),
-                            ..Default::default()
-                        },
-                        background_color: Color::NONE.into(),
-                        ..Default::default()
-                    },
-                    ButtonColors {
-                        normal: Color::NONE,
-                        ..default()
-                    },
-                    OpenLink("https://bevyengine.org"),
+                    MenuButtonBundle::transparent(),
+                    MenuAction::OpenLink("https://bevyengine.org"),
                 ))
                 .with_children(|parent| {
-                    parent.spawn(TextBundle::from_section(
-                        "Made with Bevy",
-                        TextStyle {
-                            font_size: 15.0,
-                            color: Color::rgb(0.9, 0.9, 0.9),
-                            ..default()
-                        },
-                    ));
+                    parent.spawn(MenuButtonLabelBundle::from_text("Made with Bevy").small());
                 });
             children
                 .spawn((
-                    ButtonBundle {
-                        style: Style {
-                            width: Val::Px(170.0),
-                            height: Val::Px(50.0),
-                            justify_content: JustifyContent::SpaceAround,
-                            align_items: AlignItems::Center,
-                            padding: UiRect::all(Val::Px(5.)),
-                            ..default()
-                        },
-                        background_color: Color::NONE.into(),
-                        ..Default::default()
-                    },
-                    ButtonColors {
-                        normal: Color::NONE,
-                        hovered: Color::rgb(0.25, 0.25, 0.25),
-                    },
-                    OpenLink("https://github.com/NiklasEi/bevy_game_template"),
+                    MenuButtonBundle::transparent(),
+                    MenuAction::OpenLink("https://github.com/NiklasEi/bevy_game_template"),
                 ))
                 .with_children(|parent| {
-                    parent.spawn(TextBundle::from_section(
-                        "Made with bevy_game_template",
-                        TextStyle {
-                            font_size: 15.0,
-                            color: Color::rgb(0.9, 0.9, 0.9),
-                            ..default()
-                        },
-                    ));
+                    parent.spawn(
+                        MenuButtonLabelBundle::from_text("Made with bevy_game_template").small(),
+                    );
                 });
         });
 }
 
 #[derive(Component)]
-struct ChangeState(AppState);
+enum MenuAction {
+    ChangeState(AppState),
+    OpenLink(&'static str),
+}
 
-#[derive(Component)]
-struct OpenLink(&'static str);
-
-fn click_play_button(
+fn click_button(
     mut next_state: ResMut<NextState<AppState>>,
-    mut interaction_query: Query<
-        (
-            &Interaction,
-            &mut BackgroundColor,
-            &ButtonColors,
-            Option<&ChangeState>,
-            Option<&OpenLink>,
-        ),
-        (Changed<Interaction>, With<Button>),
-    >,
+    interaction_query: Query<(&Interaction, &MenuAction), (Changed<Interaction>, With<MenuButton>)>,
 ) {
-    for (interaction, mut color, button_colors, change_state, open_link) in &mut interaction_query {
-        match *interaction {
-            Interaction::Pressed => {
-                if let Some(state) = change_state {
-                    next_state.set(state.0.clone());
-                } else if let Some(link) = open_link {
-                    if let Err(error) = webbrowser::open(link.0) {
-                        warn!("Failed to open link {error:?}");
-                    }
+    for (interaction, action) in interaction_query.iter() {
+        if *interaction != Interaction::Pressed {
+            continue;
+        }
+
+        match action {
+            MenuAction::ChangeState(state) => {
+                next_state.set(state.clone());
+            }
+            MenuAction::OpenLink(link) => {
+                if let Err(error) = webbrowser::open(link) {
+                    warn!("Failed to open link {error:?}");
                 }
-            }
-            Interaction::Hovered => {
-                *color = button_colors.hovered.into();
-            }
-            Interaction::None => {
-                *color = button_colors.normal.into();
             }
         }
     }
