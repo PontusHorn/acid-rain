@@ -1,4 +1,5 @@
 use crate::actions::Actions;
+use crate::app_state::*;
 use crate::collider::Collider;
 use crate::color::*;
 use crate::health::Health;
@@ -6,7 +7,6 @@ use crate::level::Level;
 use crate::rain::*;
 use crate::shield::ShieldBundle;
 use crate::velocity::{update_position, Velocity};
-use crate::GameState;
 use bevy::prelude::*;
 use bevy::sprite::collide_aabb::{collide, Collision};
 use bevy::sprite::Anchor;
@@ -39,7 +39,7 @@ pub enum JumpState {
 /// Player logic is only active during the State `GameState::Playing`
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::Playing), spawn_player)
+        app.add_systems(OnEnter(AppState::InGame), spawn_player)
             .add_systems(
                 Update,
                 (
@@ -214,12 +214,17 @@ fn get_hit_by_rain(
     mut rain_hit: EventReader<RainHit>,
     mut player_query: Query<(&mut Sprite, Entity), With<Player>>,
     mut health: ResMut<Health>,
+    mut playing_state: ResMut<NextState<GameState>>,
 ) {
     for (mut player_sprite, player_entity) in player_query.iter_mut() {
         for RainHit(entity) in rain_hit.read() {
-            if player_entity == *entity && health.0 > 0 {
-                health.0 -= 1;
-                player_sprite.color = Player::COLOR_HIT;
+            if player_entity == *entity {
+                if health.0 > 0 {
+                    health.0 -= 1;
+                    player_sprite.color = Player::COLOR_HIT;
+                } else {
+                    playing_state.set(GameState::GameOver);
+                }
             }
         }
     }

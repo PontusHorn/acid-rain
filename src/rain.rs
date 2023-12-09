@@ -1,10 +1,6 @@
 use std::f32::consts::{FRAC_PI_2, PI};
 
-use crate::{
-    collider::Collider,
-    velocity::{update_position, Velocity},
-    GameState,
-};
+use crate::{app_state::GameState, collider::Collider, velocity::*};
 use bevy::{
     prelude::*,
     sprite::{collide_aabb::*, Anchor},

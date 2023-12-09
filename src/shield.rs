@@ -1,8 +1,8 @@
+use crate::app_state::GameState;
 use crate::collider::Collider;
 use crate::color::*;
 use crate::power::Power;
 use crate::rain::*;
-use crate::GameState;
 use bevy::prelude::*;
 
 pub struct ShieldPlugin;

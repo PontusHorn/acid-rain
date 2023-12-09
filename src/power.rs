@@ -1,4 +1,4 @@
-use crate::GameState;
+use crate::app_state::*;
 use bevy::prelude::*;
 
 pub struct PowerPlugin;
@@ -6,7 +6,7 @@ pub struct PowerPlugin;
 impl Plugin for PowerPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(Power(1.))
-            .add_systems(OnEnter(GameState::Playing), spawn_power_display)
+            .add_systems(OnEnter(AppState::InGame), spawn_power_display)
             .add_systems(
                 Update,
                 update_power_display.run_if(in_state(GameState::Playing)),

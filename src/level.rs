@@ -1,12 +1,12 @@
 use bevy::prelude::*;
 
-use crate::{collider::Collider, GameState};
+use crate::{app_state::AppState, collider::Collider};
 
 pub struct LevelPlugin;
 
 impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::Playing), spawn_level);
+        app.add_systems(OnEnter(AppState::InGame), spawn_level);
     }
 }
 

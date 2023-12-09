@@ -1,4 +1,4 @@
-use crate::GameState;
+use crate::app_state::*;
 use bevy::prelude::*;
 
 pub struct HealthPlugin;
@@ -6,7 +6,7 @@ pub struct HealthPlugin;
 impl Plugin for HealthPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(Health(100))
-            .add_systems(OnEnter(GameState::Playing), spawn_health_display)
+            .add_systems(OnEnter(AppState::InGame), spawn_health_display)
             .add_systems(
                 Update,
                 update_health_display.run_if(in_state(GameState::Playing)),
