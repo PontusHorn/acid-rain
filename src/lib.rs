@@ -4,28 +4,30 @@ mod actions;
 mod app_state;
 mod collider;
 mod color;
+mod game_over;
 mod health;
 mod level;
 mod loading;
 mod menu;
-mod menu_button;
 mod player;
 mod power;
 mod rain;
 mod shield;
+mod ui;
 mod velocity;
 
 use crate::actions::ActionsPlugin;
 use crate::app_state::AppStatePlugin;
+use crate::game_over::GameOverPlugin;
 use crate::health::HealthPlugin;
 use crate::level::LevelPlugin;
 use crate::loading::LoadingPlugin;
 use crate::menu::MenuPlugin;
-use crate::menu_button::MenuButtonPlugin;
 use crate::player::PlayerPlugin;
 use crate::power::PowerPlugin;
 use crate::rain::RainPlugin;
 use crate::shield::ShieldPlugin;
+use crate::ui::UiPlugin;
 use crate::velocity::VelocityPlugin;
 
 use bevy::app::App;
@@ -42,10 +44,11 @@ impl Plugin for GamePlugin {
         app.add_plugins((
             AppStatePlugin,
             LoadingPlugin,
+            UiPlugin,
             MenuPlugin,
-            MenuButtonPlugin,
             LevelPlugin,
             ActionsPlugin,
+            GameOverPlugin,
             PlayerPlugin,
             ShieldPlugin,
             HealthPlugin,

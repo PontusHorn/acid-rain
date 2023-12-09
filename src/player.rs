@@ -39,7 +39,9 @@ pub enum JumpState {
 /// Player logic is only active during the State `GameState::Playing`
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(AppState::InGame), spawn_player)
+        app.add_systems(OnEnter(GameState::Playing), spawn_player)
+            .add_systems(OnExit(GameState::GameOver), despawn_player)
+            .add_systems(OnExit(AppState::InGame), despawn_player)
             .add_systems(
                 Update,
                 (
@@ -77,6 +79,12 @@ fn spawn_player(mut commands: Commands) {
             Player::local_center().extend(-10.),
         )));
     });
+}
+
+fn despawn_player(mut commands: Commands, player_query: Query<Entity, With<Player>>) {
+    for player_entity in player_query.iter() {
+        commands.entity(player_entity).despawn_recursive();
+    }
 }
 
 const X_SPEED: f32 = 200.;

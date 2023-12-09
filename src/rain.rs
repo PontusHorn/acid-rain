@@ -1,6 +1,6 @@
 use std::f32::consts::{FRAC_PI_2, PI};
 
-use crate::{app_state::GameState, collider::Collider, velocity::*};
+use crate::{app_state::*, collider::Collider, velocity::*};
 use bevy::{
     prelude::*,
     sprite::{collide_aabb::*, Anchor},
@@ -20,14 +20,17 @@ enum RainState {
 
 impl Plugin for RainPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<RainHit>().add_systems(
-            Update,
-            (
-                spawn_rain,
-                (splash_rain, despawn_rain).after(update_position),
+        app.add_event::<RainHit>()
+            .add_systems(
+                Update,
+                (
+                    spawn_rain,
+                    (splash_rain, despawn_finished_rain).after(update_position),
+                )
+                    .run_if(in_state(GameState::Playing)),
             )
-                .run_if(in_state(GameState::Playing)),
-        );
+            .add_systems(OnExit(GameState::GameOver), despawn_rain)
+            .add_systems(OnExit(AppState::InGame), despawn_rain);
     }
 }
 
@@ -179,7 +182,7 @@ fn run_along_left_side(
     rain_velocity.0 = Vec2::from_angle(splash_angle) * splash_speed;
 }
 
-fn despawn_rain(
+fn despawn_finished_rain(
     mut commands: Commands,
     rain_query: Query<(Entity, &Transform), With<Rain>>,
     camera_query: Query<&OrthographicProjection>,
@@ -193,5 +196,11 @@ fn despawn_rain(
         if rain_transform.translation.y < camera_projection.area.min.y - 100. {
             commands.entity(entity).despawn();
         }
+    }
+}
+
+fn despawn_rain(mut commands: Commands, rain_query: Query<Entity, With<Rain>>) {
+    for entity in rain_query.iter() {
+        commands.entity(entity).despawn_recursive();
     }
 }

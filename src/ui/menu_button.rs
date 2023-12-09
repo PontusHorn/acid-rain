@@ -82,7 +82,7 @@ impl Default for MenuButtonLabelBundle {
                 "Button",
                 TextStyle {
                     font_size: 40.0,
-                    color: Color::rgb(0.9, 0.9, 0.9),
+                    color: Self::COLOR,
                     ..default()
                 },
             ),
@@ -91,14 +91,25 @@ impl Default for MenuButtonLabelBundle {
 }
 
 impl MenuButtonLabelBundle {
+    pub const COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
+
     pub fn from_text(text: &str) -> Self {
         let mut bundle = Self::default();
         bundle.text.text.sections[0].value = text.to_string();
         bundle
     }
 
-    pub fn small(mut self) -> Self {
-        self.text.text.sections[0].style.font_size = 15.0;
+    pub fn with_small_font(mut self) -> Self {
+        for section in &mut self.text.text.sections {
+            section.style.font_size = 15.0;
+        }
+        self
+    }
+
+    pub fn with_alpha(mut self, alpha: f32) -> Self {
+        for section in &mut self.text.text.sections {
+            section.style.color.set_a(alpha);
+        }
         self
     }
 }

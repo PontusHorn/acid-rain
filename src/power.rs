@@ -7,6 +7,7 @@ impl Plugin for PowerPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(Power(1.))
             .add_systems(OnEnter(AppState::InGame), spawn_power_display)
+            .add_systems(OnExit(AppState::InGame), despawn_power_display)
             .add_systems(
                 Update,
                 update_power_display.run_if(in_state(GameState::Playing)),
@@ -18,23 +19,29 @@ impl Plugin for PowerPlugin {
 pub struct Power(pub f32);
 
 #[derive(Component)]
+struct PowerDisplay;
+
+#[derive(Component)]
 struct PowerBar;
 
 fn spawn_power_display(mut commands: Commands, power: Res<Power>) {
     commands
-        .spawn(NodeBundle {
-            style: Style {
-                top: Val::Px(45.0),
-                right: Val::Px(10.0),
-                width: Val::Px(100.0),
-                height: Val::Px(25.0),
-                padding: UiRect::all(Val::Px(3.)),
-                position_type: PositionType::Absolute,
+        .spawn((
+            NodeBundle {
+                style: Style {
+                    top: Val::Px(45.0),
+                    right: Val::Px(10.0),
+                    width: Val::Px(100.0),
+                    height: Val::Px(25.0),
+                    padding: UiRect::all(Val::Px(3.)),
+                    position_type: PositionType::Absolute,
+                    ..default()
+                },
+                background_color: Color::BLACK.into(),
                 ..default()
             },
-            background_color: Color::BLACK.into(),
-            ..default()
-        })
+            PowerDisplay,
+        ))
         .with_children(|children| {
             children.spawn((
                 NodeBundle {
@@ -49,6 +56,12 @@ fn spawn_power_display(mut commands: Commands, power: Res<Power>) {
                 PowerBar,
             ));
         });
+}
+
+fn despawn_power_display(mut commands: Commands, query: Query<Entity, With<PowerDisplay>>) {
+    for entity in query.iter() {
+        commands.entity(entity).despawn_recursive();
+    }
 }
 
 fn update_power_display(mut power_bar_query: Query<&mut Style, With<PowerBar>>, power: Res<Power>) {

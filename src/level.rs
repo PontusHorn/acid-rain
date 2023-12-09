@@ -1,12 +1,14 @@
 use bevy::prelude::*;
 
-use crate::{app_state::AppState, collider::Collider};
+use crate::{app_state::*, collider::Collider};
 
 pub struct LevelPlugin;
 
 impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(AppState::InGame), spawn_level);
+        app.add_systems(OnEnter(GameState::Playing), spawn_level)
+            .add_systems(OnExit(GameState::GameOver), despawn_level)
+            .add_systems(OnExit(AppState::InGame), despawn_level);
     }
 }
 
@@ -51,4 +53,10 @@ fn spawn_level(mut commands: Commands) {
         Vec2::new(100., -50.),
         Vec2::new(150., 20.),
     ));
+}
+
+fn despawn_level(mut commands: Commands, query: Query<Entity, With<Level>>) {
+    for entity in query.iter() {
+        commands.entity(entity).despawn_recursive();
+    }
 }
