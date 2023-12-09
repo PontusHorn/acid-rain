@@ -111,7 +111,7 @@ fn update_velocity(
             let player_rect = player_collider.rect(&new_transform.translation);
             let level_rect = level_collider.rect(&level_transform.translation());
             let collision = collide(
-                new_transform.translation,
+                player_rect.center().extend(0.),
                 player_rect.size(),
                 level_rect.center().extend(0.),
                 level_rect.size(),
@@ -146,7 +146,7 @@ fn update_velocity(
             new_jump_state = JumpState::Falling;
         }
 
-        player_transform.apply(&new_transform);
+        *player_transform = new_transform;
         player_velocity.0 = new_velocity;
         player.jump_state = new_jump_state;
     }
