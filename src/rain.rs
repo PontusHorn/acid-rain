@@ -12,6 +12,10 @@ pub struct RainPlugin;
 #[derive(Component)]
 pub struct Rain(RainState);
 
+impl Rain {
+    const COLOR: Color = Color::rgb(0.3, 1., 0.7);
+}
+
 #[derive(PartialEq, Debug)]
 enum RainState {
     Falling,
@@ -51,7 +55,7 @@ fn spawn_rain(
         commands
             .spawn(SpriteBundle {
                 sprite: Sprite {
-                    color: Color::WHITE,
+                    color: Rain::COLOR,
                     custom_size: Some(Vec2::new(rng.gen_range(4.0..=16.0), 1.)),
                     ..default()
                 },

@@ -12,7 +12,7 @@ use winit::window::Icon;
 fn main() {
     App::new()
         .insert_resource(Msaa::Off)
-        .insert_resource(ClearColor(Color::rgb(0.4, 0.4, 0.4)))
+        .insert_resource(ClearColor(Color::rgb(0.1647, 0.1568, 0.1843)))
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "Acid Rain".to_string(),

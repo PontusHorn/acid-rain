@@ -19,8 +19,8 @@ pub struct Player {
 }
 
 impl Player {
-    const COLOR_BASE: Color = Color::rgb(0., 0.5, 0.8);
-    const COLOR_HIT: Color = Color::rgb(0.5, 0.19, 0.38);
+    const COLOR_BASE: Color = Color::rgb(0.0274, 0.298, 0.6627);
+    const COLOR_HIT: Color = Color::rgb(0., 0.5, 0.5);
     const SIZE: Vec2 = Vec2::splat(32.);
 
     fn local_center() -> Vec2 {
