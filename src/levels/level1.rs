@@ -15,20 +15,38 @@ impl Plugin for Level1Plugin {
 pub struct Level1;
 
 fn spawn_level(mut commands: Commands) {
-    commands.spawn(LevelBundle::from_center_size(
-        Vec2::new(0., -300.),
-        Vec2::new(2000., 200.),
+    // Ground
+    commands.spawn(LevelBundle::from_min_max(
+        Vec2::new(-1000., -400.),
+        Vec2::new(1000., -200.),
     ));
-    commands.spawn(LevelBundle::from_center_size(
-        Vec2::new(-400., 0.),
-        Vec2::new(200., 100.),
+    // Left shelter roof
+    commands.spawn(LevelBundle::from_min_max(
+        Vec2::new(-700., -100.),
+        Vec2::new(-400., 150.),
     ));
-    commands.spawn(LevelBundle::from_center_size(
-        Vec2::new(100., -50.),
-        Vec2::new(150., 20.),
+    // Left shelter wall
+    commands.spawn(LevelBundle::from_min_max(
+        Vec2::new(-700., -200.),
+        Vec2::new(-600., -100.),
+    ));
+    // Middle shelter
+    commands.spawn(LevelBundle::from_min_max(
+        Vec2::new(-100., -60.),
+        Vec2::new(100., -40.),
+    ));
+    // Right shelter roof
+    commands.spawn(LevelBundle::from_min_max(
+        Vec2::new(400., -100.),
+        Vec2::new(700., 150.),
+    ));
+    // Right shelter wall
+    commands.spawn(LevelBundle::from_min_max(
+        Vec2::new(600., -200.),
+        Vec2::new(700., -100.),
     ));
 
-    spawn_player(commands, Vec3::new(-400., -180., 1.));
+    spawn_player(commands, Vec3::new(-550., -184., 1.));
 }
 
 fn despawn_level(mut commands: Commands, query: Query<Entity, With<Level>>) {

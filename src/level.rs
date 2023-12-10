@@ -28,4 +28,8 @@ impl LevelBundle {
             level: Level,
         }
     }
+
+    pub fn from_min_max(min: Vec2, max: Vec2) -> Self {
+        Self::from_center_size((min + max) / 2., max - min)
+    }
 }
