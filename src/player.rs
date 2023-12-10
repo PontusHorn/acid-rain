@@ -39,8 +39,7 @@ pub enum JumpState {
 /// Player logic is only active during the State `GameState::Playing`
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::Playing), spawn_player)
-            .add_systems(OnExit(GameState::GameOver), despawn_player)
+        app.add_systems(OnExit(GameState::GameOver), despawn_player)
             .add_systems(OnExit(AppState::InGame), despawn_player)
             .add_systems(
                 Update,
@@ -54,7 +53,7 @@ impl Plugin for PlayerPlugin {
     }
 }
 
-fn spawn_player(mut commands: Commands) {
+pub fn spawn_player(mut commands: Commands, translation: Vec3) {
     let player = (
         SpriteBundle {
             sprite: Sprite {
@@ -63,7 +62,7 @@ fn spawn_player(mut commands: Commands) {
                 anchor: Anchor::BottomCenter,
                 ..default()
             },
-            transform: Transform::from_translation(Vec3::new(-400., -180., 1.)),
+            transform: Transform::from_translation(translation),
             ..default()
         },
         Velocity(Vec2::ZERO),

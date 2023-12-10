@@ -1,29 +1,19 @@
 use bevy::prelude::*;
 
-use crate::{app_state::*, collider::Collider};
-
-pub struct LevelPlugin;
-
-impl Plugin for LevelPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::Playing), spawn_level)
-            .add_systems(OnExit(GameState::GameOver), despawn_level)
-            .add_systems(OnExit(AppState::InGame), despawn_level);
-    }
-}
+use crate::collider::Collider;
 
 #[derive(Component)]
 pub struct Level;
 
 #[derive(Bundle)]
-struct LevelBundle {
+pub struct LevelBundle {
     sprite: SpriteBundle,
     collider: Collider,
     level: Level,
 }
 
 impl LevelBundle {
-    fn from_center_size(position: Vec2, size: Vec2) -> Self {
+    pub fn from_center_size(position: Vec2, size: Vec2) -> Self {
         Self {
             sprite: SpriteBundle {
                 sprite: Sprite {
@@ -37,26 +27,5 @@ impl LevelBundle {
             collider: Collider::from_size(size),
             level: Level,
         }
-    }
-}
-
-fn spawn_level(mut commands: Commands) {
-    commands.spawn(LevelBundle::from_center_size(
-        Vec2::new(0., -300.),
-        Vec2::new(2000., 200.),
-    ));
-    commands.spawn(LevelBundle::from_center_size(
-        Vec2::new(-400., 0.),
-        Vec2::new(200., 100.),
-    ));
-    commands.spawn(LevelBundle::from_center_size(
-        Vec2::new(100., -50.),
-        Vec2::new(150., 20.),
-    ));
-}
-
-fn despawn_level(mut commands: Commands, query: Query<Entity, With<Level>>) {
-    for entity in query.iter() {
-        commands.entity(entity).despawn_recursive();
     }
 }

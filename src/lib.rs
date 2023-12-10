@@ -7,6 +7,7 @@ mod color;
 mod game_over;
 mod health;
 mod level;
+mod levels;
 mod loading;
 mod menu;
 mod player;
@@ -20,7 +21,7 @@ use crate::actions::ActionsPlugin;
 use crate::app_state::AppStatePlugin;
 use crate::game_over::GameOverPlugin;
 use crate::health::HealthPlugin;
-use crate::level::LevelPlugin;
+use crate::levels::LevelsPlugin;
 use crate::loading::LoadingPlugin;
 use crate::menu::MenuPlugin;
 use crate::player::PlayerPlugin;
@@ -46,7 +47,7 @@ impl Plugin for GamePlugin {
             LoadingPlugin,
             UiPlugin,
             MenuPlugin,
-            LevelPlugin,
+            LevelsPlugin,
             ActionsPlugin,
             GameOverPlugin,
             PlayerPlugin,
