@@ -1,0 +1,5 @@
+[toolchain]
+# Newer Rust can't compile the objc2 beta that winit 0.28 (Bevy 0.12) needs
+# on macOS. Remove this pin after upgrading Bevy.
+channel = "1.96.0"
+components = ["clippy", "rustfmt"]
